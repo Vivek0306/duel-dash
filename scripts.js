@@ -5,6 +5,13 @@ const pauseBtn = document.getElementById('pauseBtn');
 const stopBtn = document.getElementById('stopBtn');
 const circleCountEl = document.getElementById('circleCount');
 
+console.log(window.innerWidth, window.innerHeight);
+window.addEventListener('resize', () => {
+canvas.width = window.innerWidth - window.innerWidth * 0.2;
+canvas.height = window.innerHeight - window.innerHeight * 0.3;
+});
+
+
 // Constants
 const CIRCLE_RADIUS = 40;
 const SPEED = 3;
