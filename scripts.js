@@ -66,7 +66,7 @@ class Circle {
         ctx.closePath();
     }
 
-    static checkCollision(c1, c2) {
+    static checkCollision(c1, c2, circles) {
         const dx = c2.x - c1.x;
         const dy = c2.y - c1.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -90,6 +90,15 @@ class Circle {
             c1.y -= separationY;
             c2.x += separationX;
             c2.y += separationY;
+
+            if (c1.powerup && !c2.powerup) {
+                circles.splice(circles.indexOf(c2), 1);
+                c1.powerup = null;
+            }
+            else if (!c1.powerup && c2.powerup) {
+                circles.splice(circles.indexOf(c1), 1);
+                c2.powerup = null;
+            }
 
             console.log(`Collision detected between Circle ${c1.id} and Circle ${c2.id}`);
         }
@@ -175,7 +184,7 @@ class Game {
 
         for (let i = 0; i < this.circles.length; i++) {
             for (let j = i + 1; j < this.circles.length; j++) {
-                Circle.checkCollision(this.circles[i], this.circles[j]);
+                Circle.checkCollision(this.circles[i], this.circles[j], this.circles);
             }
         }
 
