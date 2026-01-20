@@ -21,7 +21,7 @@ const MAX_CIRCLES = 5;
 const COLORS = ['#e94560', '#00d4ff', '#f39c12', '#9b59b6', '#2ecc71', '#e67e22', '#1abc9c'];
 
 class Circle {
-    constructor(x, y, vx, vy, color, id) {
+    constructor(x, y, vx, vy, color, id, powerup = null) {
         this.id = id;
         this.x = x;
         this.y = y;
@@ -29,6 +29,7 @@ class Circle {
         this.vy = vy;
         this.radius = CIRCLE_RADIUS;
         this.color = color;
+        this.powerup = null;
     }
 
     update(canvasWidth, canvasHeight) {
@@ -56,6 +57,9 @@ class Circle {
         ctx.font = '20px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(this.id, this.x, this.y)
+        if(this.powerup){
+            ctx.fillText(`Powerup!!`, this.x, this.y + 25)
+        }
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -89,6 +93,19 @@ class Circle {
 
             console.log(`Collision detected between Circle ${c1.id} and Circle ${c2.id}`);
         }
+    }
+
+    static checkPowerupCollision(circle, powerup) {
+        const dx = powerup.x - circle.x;
+        const dy = powerup.y - circle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = circle.radius + POWERUP_RADIUS;
+
+        if (distance < minDistance && distance > 0) {
+            circle.powerup = true;
+            return true;
+        }
+        return false;
     }
 }
 
@@ -159,6 +176,15 @@ class Game {
         for (let i = 0; i < this.circles.length; i++) {
             for (let j = i + 1; j < this.circles.length; j++) {
                 Circle.checkCollision(this.circles[i], this.circles[j]);
+            }
+        }
+
+        for (let i = this.circles.length - 1; i >= 0; i--) {
+            for (let j = this.powerups.length - 1; j >= 0; j--) {
+                if (Circle.checkPowerupCollision(this.circles[i], this.powerups[j])) {
+                    console.log(`Circle ${this.circles[i].id} collected a power-up!`);
+                    this.powerups.splice(j, 1);
+                }
             }
         }
     }
