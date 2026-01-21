@@ -4,7 +4,7 @@ const canvasContainer = canvas.parentElement;
 function resizeCanvas() {
     const displayWidth = canvasContainer.clientWidth;
     canvas.width = displayWidth;
-    canvas.height = displayWidth * 0.6; // Maintain aspect ratio
+    canvas.height = displayWidth * 0.6;
 }
 
 resizeCanvas();
@@ -42,8 +42,8 @@ class Circle {
         this.powerup = null;
         this.particles = [];
         this.score = 0;
-        this.isAlive = true; // Track alive status
-        this.killedBy = null; // Track who killed this circle
+        this.isAlive = true;
+        this.killedBy = null;
     }
 
     update(canvasWidth, canvasHeight) {
@@ -128,7 +128,6 @@ class Circle {
 
             // Handle kills with proper tracking
             if (c1.powerup && !c2.powerup) {
-                // c1 kills c2
                 c2.isAlive = false;
                 c2.killedBy = c1.id;
                 circles.splice(circles.indexOf(c2), 1);
@@ -137,7 +136,6 @@ class Circle {
                 game.updateScoreBoard();
             }
             else if (!c1.powerup && c2.powerup) {
-                // c2 kills c1
                 c1.isAlive = false;
                 c1.killedBy = c2.id;
                 circles.splice(circles.indexOf(c1), 1);
@@ -146,7 +144,6 @@ class Circle {
                 game.updateScoreBoard();
             } 
             else if (c1.powerup && c2.powerup) {
-                // Both have powerups, cancel out
                 c1.powerup = null;
                 c2.powerup = null;
             }
@@ -206,7 +203,7 @@ class Game {
         this.canvas = canvas;
         this.ctx = ctx;
         this.circles = [];
-        this.allCircles = []; // Track all circles ever spawned
+        this.allCircles = [];
         this.powerups = [];
         this.isPaused = true;
         this.animationId = null;
@@ -234,12 +231,11 @@ class Game {
 
         const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
-        // Generate unique ID based on total circles spawned
         const id = this.allCircles.length + 1;
 
         const circle = new Circle(x, y, vx, vy, color, id);
         this.circles.push(circle);
-        this.allCircles.push(circle); // Keep track of all circles
+        this.allCircles.push(circle);
 
         this.updateUI();
         this.updateScoreBoard();
@@ -275,7 +271,6 @@ class Game {
     updateScoreBoard() {
         scoreBoard.innerHTML = '';
         
-        // Sort all circles by score (highest first), then by alive status
         const sortedCircles = [...this.allCircles].sort((a, b) => {
             if (a.isAlive && !b.isAlive) return -1;
             if (!a.isAlive && b.isAlive) return 1;
@@ -286,7 +281,6 @@ class Game {
             const row = document.createElement('tr');
             
             if (circle.isAlive) {
-                // Alive circle - normal display
                 row.innerHTML = `
                     <td>
                         <span class="badge" style="background-color: ${circle.color}">
@@ -297,7 +291,6 @@ class Game {
                 `;
                 row.className = 'table-active';
             } else {
-                // Dead circle - greyed out with death info
                 row.innerHTML = `
                     <td class="text-muted">
                         <span class="badge bg-secondary">
