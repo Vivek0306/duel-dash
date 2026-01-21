@@ -1,15 +1,30 @@
 const canvas = document.getElementById('gameCanvas');
+const canvasContainer = canvas.parentElement;
+
+canvas.width = window.innerWidth - window.innerWidth * 0.2;
+canvas.height = window.innerHeight - window.innerHeight * 0.3;
 const ctx = canvas.getContext('2d');
 const spawnBtn = document.getElementById('spawnBtn');
 const pauseBtn = document.getElementById('pauseBtn');
 const stopBtn = document.getElementById('stopBtn');
 const powerupBtn = document.getElementById('powerupBtn');
 const circleCountEl = document.getElementById('circleCount');
+const scoreBoard = document.getElementById('score-board');
 
+function resizeCanvas() {
+    canvas.width = canvasContainer.clientWidth;
+    canvas.height = window.innerHeight - window.innerHeight * 0.3;
+}
+
+resizeCanvas();
 window.addEventListener('resize', () => {
-canvas.width = window.innerWidth - window.innerWidth * 0.2;
-canvas.height = window.innerHeight - window.innerHeight * 0.3;
+    resizeCanvas();
 });
+
+// window.addEventListener('resize', () => {
+//     canvas.width = window.innerWidth - window.innerWidth * 0.2;
+//     canvas.height = window.innerHeight - window.innerHeight * 0.3;
+// });
 
 
 // Constants
@@ -18,6 +33,7 @@ const POWERUP_RADIUS = 20;
 
 const SPEED = 3;
 const MAX_CIRCLES = 5;
+const MAX_POWERUPS = 5;
 const COLORS = ['#e94560', '#00d4ff', '#f39c12', '#9b59b6', '#2ecc71', '#e67e22', '#1abc9c'];
 
 class Circle {
@@ -30,6 +46,8 @@ class Circle {
         this.radius = CIRCLE_RADIUS;
         this.color = color;
         this.powerup = null;
+        this.particles = [];
+        this.score = 0;
     }
 
     update(canvasWidth, canvasHeight) {
@@ -46,9 +64,33 @@ class Circle {
             this.vy = -this.vy;
             this.y = Math.max(this.radius, Math.min(canvasHeight - this.radius, this.y));
         }
+
+        if (this.powerup) {
+            this.particles.push({
+                x: this.x,
+                y: this.y,
+                life: 1.0
+            });
+
+            this.particles = this.particles.filter(p => {
+                p.life -= 0.01;
+                return p.life > 0;
+            });
+        }else{
+            this.particles = [];
+        }
     }
 
     draw(ctx) {
+        if (this.powerup) {
+            this.particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, this.radius * p.life, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + Math.floor(p.life * 100).toString(16).padStart(2, '0');
+                ctx.fill();
+            });
+        }
+        let angle = 0;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
@@ -57,16 +99,13 @@ class Circle {
         ctx.font = '20px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(this.id, this.x, this.y)
-        if(this.powerup){
-            ctx.fillText(`Powerup!!`, this.x, this.y + 25)
-        }
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.closePath();
     }
 
-    static checkCollision(c1, c2, circles) {
+    static checkCollision(c1, c2, circles, game) {
         const dx = c2.x - c1.x;
         const dy = c2.y - c1.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -94,9 +133,17 @@ class Circle {
             if (c1.powerup && !c2.powerup) {
                 circles.splice(circles.indexOf(c2), 1);
                 c1.powerup = null;
+                c1.score += 1;
+                game.updateScoreBoard();
             }
             else if (!c1.powerup && c2.powerup) {
                 circles.splice(circles.indexOf(c1), 1);
+                c2.powerup = null;
+                c2.score += 1;
+                game.updateScoreBoard();
+
+            } else if (c1.powerup && c2.powerup) {
+                c1.powerup = null;
                 c2.powerup = null;
             }
 
@@ -118,14 +165,28 @@ class Circle {
     }
 }
 
-class Powerup{
-    constructor(x, y){
+class Powerup {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
     }
 
 
     draw(ctx) {
+        const pulseTime = Date.now() / 200;
+        const pulseSize = Math.sin(pulseTime) * 5 + 10;
+        
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, POWERUP_RADIUS + pulseSize, 0, Math.PI * 2);
+        const gradient = ctx.createRadialGradient(
+            this.x, this.y, POWERUP_RADIUS,
+            this.x, this.y, POWERUP_RADIUS + pulseSize
+        );
+        gradient.addColorStop(0, '#ff9100' + '80');
+        gradient.addColorStop(1, '#ff9100' + '00');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, POWERUP_RADIUS, 0, Math.PI * 2);
         ctx.fillStyle = '#e72503ff';
@@ -147,8 +208,9 @@ class Game {
         this.animationId = null;
     }
 
-    spawnPowerUp(){
+    spawnPowerUp() {
         // Placeholder for future power-up implementation
+        if (this.powerups.length >= MAX_POWERUPS) return;
         const x = POWERUP_RADIUS + Math.random() * (this.canvas.width - 2 * POWERUP_RADIUS);
         const y = POWERUP_RADIUS + Math.random() * (this.canvas.height - 2 * POWERUP_RADIUS);
 
@@ -162,19 +224,20 @@ class Game {
 
         const x = CIRCLE_RADIUS + Math.random() * (this.canvas.width - 2 * CIRCLE_RADIUS);
         const y = CIRCLE_RADIUS + Math.random() * (this.canvas.height - 2 * CIRCLE_RADIUS);
-        
+
         const angle = Math.random() * Math.PI * 2;
         const vx = Math.cos(angle) * SPEED;
         const vy = Math.sin(angle) * SPEED;
-        
+
         const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
-        const id = this.circles.length > 0 ? this.circles.length + 1: 1;
-        
+        const id = this.circles.length > 0 ? this.circles.length + 1 : 1;
+
         const circle = new Circle(x, y, vx, vy, color, id);
         this.circles.push(circle);
-        
+
         this.updateUI();
+        this.updateScoreBoard();
     }
 
     update() {
@@ -184,7 +247,7 @@ class Game {
 
         for (let i = 0; i < this.circles.length; i++) {
             for (let j = i + 1; j < this.circles.length; j++) {
-                Circle.checkCollision(this.circles[i], this.circles[j], this.circles);
+                Circle.checkCollision(this.circles[i], this.circles[j], this.circles, this);
             }
         }
 
@@ -204,10 +267,22 @@ class Game {
         this.powerups.forEach(powerup => powerup.draw(this.ctx));
     }
 
+    updateScoreBoard() {
+
+        scoreBoard.innerHTML = '';
+        this.circles.forEach(circle => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>Circle ${circle.id}</td>
+                <td>${circle.score}</td>
+            `;
+            scoreBoard.appendChild(row);
+        });
+    }
+
     gameLoop() {
         this.update();
         this.draw();
-
         if (!this.isPaused) {
             this.animationId = requestAnimationFrame(() => this.gameLoop());
         }
@@ -229,6 +304,7 @@ class Game {
     updateUI() {
         circleCountEl.textContent = this.circles.length;
         spawnBtn.disabled = this.circles.length >= MAX_CIRCLES;
+        powerupBtn.disabled = this.powerups.length >= MAX_POWERUPS;
     }
 }
 

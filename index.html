@@ -5,20 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Duel Dash</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 </head>
 <body>
-    <canvas id="gameCanvas" height="800" width="1200"></canvas>
-    
-    <div class="controls">
-        <button id="spawnBtn">Spawn Circle</button>
-        <button id="pauseBtn">Start</button>
-        <button id="stopBtn">Stop</button>
-        <button id="powerupBtn">Powerup</button>
+    <div class="container d-flex justify-content-around align-items-center mb-3 gap-2">
+        <div class="col-2">
+            <table class="table table-primary">
+                <thead>
+                    <th>Player</th>
+                    <th>Score</th>
+                </thead>
+                <tbody id="score-board">
+
+                </tbody>
+            </table>
+        </div>
+        <div class="col-10">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+    </div>
+    <div class="container d-flex justify-content-center mb-3 gap-4">
+        <button class="btn btn-primary" id="spawnBtn"las>Spawn Circle</button>
+        <button class="btn btn-primary" id="pauseBtn">Start</button>
+        <button class="btn btn-primary" id="stopBtn">Stop</button>
+        <button class="btn btn-primary" id="powerupBtn">Powerup</button>
     </div>
     
     <div class="info">
         Circles: <span id="circleCount">0</span> / 5
     </div>
     <script src="scripts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>

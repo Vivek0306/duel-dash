@@ -7,6 +7,7 @@ body {
     align-items: center;
     min-height: 100vh;
     background: #1a1a2e;
+    background-color: #1a1a2e !important;
     font-family: Arial, sans-serif;
 }
 
@@ -16,11 +17,6 @@ canvas {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
-.controls {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-}
 
 button {
     padding: 12px 24px;
