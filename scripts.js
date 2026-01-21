@@ -148,7 +148,6 @@ class Circle {
                 c2.powerup = null;
             }
 
-            console.log(`Collision detected between Circle ${c1.id} and Circle ${c2.id}`);
         }
     }
 
@@ -255,11 +254,12 @@ class Game {
         for (let i = this.circles.length - 1; i >= 0; i--) {
             for (let j = this.powerups.length - 1; j >= 0; j--) {
                 if (Circle.checkPowerupCollision(this.circles[i], this.powerups[j])) {
-                    console.log(`Circle ${this.circles[i].id} collected a power-up!`);
                     this.powerups.splice(j, 1);
                 }
             }
         }
+
+        this.updateUI();
     }
 
     draw() {
@@ -339,7 +339,12 @@ class Game {
 const game = new Game(canvas, ctx);
 
 // Event listeners
-spawnBtn.addEventListener('click', () => game.spawnCircle());
+spawnBtn.addEventListener('click', () => {
+    game.spawnCircle();
+    if(game.isPaused){
+        game.togglePause();
+    }
+});
 pauseBtn.addEventListener('click', () => game.togglePause());
 stopBtn.addEventListener('click', () => game.reset());
 powerupBtn.addEventListener('click', () => game.spawnPowerUp());
