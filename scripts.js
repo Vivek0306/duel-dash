@@ -1,8 +1,14 @@
 const canvas = document.getElementById('gameCanvas');
 const canvasContainer = canvas.parentElement;
 
-canvas.width = window.innerWidth - window.innerWidth * 0.2;
-canvas.height = window.innerHeight - window.innerHeight * 0.3;
+function resizeCanvas() {
+    const displayWidth = canvasContainer.clientWidth;
+    canvas.width = displayWidth;
+    canvas.height = displayWidth * 0.6; // Maintain aspect ratio
+}
+
+resizeCanvas();
+
 const ctx = canvas.getContext('2d');
 const spawnBtn = document.getElementById('spawnBtn');
 const pauseBtn = document.getElementById('pauseBtn');
@@ -11,21 +17,9 @@ const powerupBtn = document.getElementById('powerupBtn');
 const circleCountEl = document.getElementById('circleCount');
 const scoreBoard = document.getElementById('score-board');
 
-function resizeCanvas() {
-    canvas.width = canvasContainer.clientWidth;
-    canvas.height = window.innerHeight - window.innerHeight * 0.3;
-}
-
-resizeCanvas();
 window.addEventListener('resize', () => {
     resizeCanvas();
 });
-
-// window.addEventListener('resize', () => {
-//     canvas.width = window.innerWidth - window.innerWidth * 0.2;
-//     canvas.height = window.innerHeight - window.innerHeight * 0.3;
-// });
-
 
 // Constants
 const CIRCLE_RADIUS = 60;
@@ -48,6 +42,8 @@ class Circle {
         this.powerup = null;
         this.particles = [];
         this.score = 0;
+        this.isAlive = true; // Track alive status
+        this.killedBy = null; // Track who killed this circle
     }
 
     update(canvasWidth, canvasHeight) {
@@ -76,7 +72,7 @@ class Circle {
                 p.life -= 0.01;
                 return p.life > 0;
             });
-        }else{
+        } else {
             this.particles = [];
         }
     }
@@ -90,7 +86,7 @@ class Circle {
                 ctx.fill();
             });
         }
-        let angle = 0;
+        
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
@@ -98,7 +94,7 @@ class Circle {
         ctx.fillStyle = '#000000ff';
         ctx.font = '20px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(this.id, this.x, this.y)
+        ctx.fillText(this.id, this.x, this.y);
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -130,19 +126,27 @@ class Circle {
             c2.x += separationX;
             c2.y += separationY;
 
+            // Handle kills with proper tracking
             if (c1.powerup && !c2.powerup) {
+                // c1 kills c2
+                c2.isAlive = false;
+                c2.killedBy = c1.id;
                 circles.splice(circles.indexOf(c2), 1);
                 c1.powerup = null;
                 c1.score += 1;
                 game.updateScoreBoard();
             }
             else if (!c1.powerup && c2.powerup) {
+                // c2 kills c1
+                c1.isAlive = false;
+                c1.killedBy = c2.id;
                 circles.splice(circles.indexOf(c1), 1);
                 c2.powerup = null;
                 c2.score += 1;
                 game.updateScoreBoard();
-
-            } else if (c1.powerup && c2.powerup) {
+            } 
+            else if (c1.powerup && c2.powerup) {
+                // Both have powerups, cancel out
                 c1.powerup = null;
                 c2.powerup = null;
             }
@@ -170,7 +174,6 @@ class Powerup {
         this.x = x;
         this.y = y;
     }
-
 
     draw(ctx) {
         const pulseTime = Date.now() / 200;
@@ -203,13 +206,13 @@ class Game {
         this.canvas = canvas;
         this.ctx = ctx;
         this.circles = [];
+        this.allCircles = []; // Track all circles ever spawned
         this.powerups = [];
         this.isPaused = true;
         this.animationId = null;
     }
 
     spawnPowerUp() {
-        // Placeholder for future power-up implementation
         if (this.powerups.length >= MAX_POWERUPS) return;
         const x = POWERUP_RADIUS + Math.random() * (this.canvas.width - 2 * POWERUP_RADIUS);
         const y = POWERUP_RADIUS + Math.random() * (this.canvas.height - 2 * POWERUP_RADIUS);
@@ -231,10 +234,12 @@ class Game {
 
         const color = COLORS[Math.floor(Math.random() * COLORS.length)];
 
-        const id = this.circles.length > 0 ? this.circles.length + 1 : 1;
+        // Generate unique ID based on total circles spawned
+        const id = this.allCircles.length + 1;
 
         const circle = new Circle(x, y, vx, vy, color, id);
         this.circles.push(circle);
+        this.allCircles.push(circle); // Keep track of all circles
 
         this.updateUI();
         this.updateScoreBoard();
@@ -268,14 +273,43 @@ class Game {
     }
 
     updateScoreBoard() {
-
         scoreBoard.innerHTML = '';
-        this.circles.forEach(circle => {
+        
+        // Sort all circles by score (highest first), then by alive status
+        const sortedCircles = [...this.allCircles].sort((a, b) => {
+            if (a.isAlive && !b.isAlive) return -1;
+            if (!a.isAlive && b.isAlive) return 1;
+            return b.score - a.score;
+        });
+
+        sortedCircles.forEach(circle => {
             const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>Circle ${circle.id}</td>
-                <td>${circle.score}</td>
-            `;
+            
+            if (circle.isAlive) {
+                // Alive circle - normal display
+                row.innerHTML = `
+                    <td>
+                        <span class="badge" style="background-color: ${circle.color}">
+                            Circle ${circle.id}
+                        </span>
+                    </td>
+                    <td class="fw-bold">${circle.score}</td>
+                `;
+                row.className = 'table-active';
+            } else {
+                // Dead circle - greyed out with death info
+                row.innerHTML = `
+                    <td class="text-muted">
+                        <span class="badge bg-secondary">
+                            Circle ${circle.id}
+                        </span>
+                        <small class="d-block text-danger">💀 Killed by Circle ${circle.killedBy}</small>
+                    </td>
+                    <td class="text-muted">${circle.score}</td>
+                `;
+                row.className = 'table-secondary opacity-50';
+            }
+            
             scoreBoard.appendChild(row);
         });
     }
@@ -290,7 +324,7 @@ class Game {
 
     togglePause() {
         this.isPaused = !this.isPaused;
-        pauseBtn.textContent = this.isPaused ? 'Start' : 'Pause';
+        pauseBtn.textContent = this.isPaused ? '▶️ Start' : '⏸️ Pause';
 
         if (!this.isPaused) {
             this.gameLoop();
