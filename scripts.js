@@ -2,61 +2,141 @@
 // 1. Adjust radius based on screen sizes --- DONE
 // 2. Random spawn for power ups --- DONE
 // 3. Winner splash screen - [OPTIONAL] -- DONE FOR PC SCREEN
-// 4. Adjust arena size for mobile devices
+// 4. Adjust arena size for mobile devices --- DONE
 
-
+// ============================================
+// GLOBAL VARIABLES & DEVICE DETECTION
+// ============================================
 const canvas = document.getElementById('gameCanvas');
 const canvasContainer = canvas.parentElement;
-let CIRCLE_RADIUS = canvasContainer.clientWidth * 0.04;
-let POWERUP_RADIUS = canvasContainer.clientWidth * 0.025;
-
-function resizeCanvas() {
-    const displayWidth = canvasContainer.clientWidth;
-    canvas.width = displayWidth;
-    canvas.height = displayWidth * 0.6;
-    
-    let circleScale, powerupScale;
-    
-    if (displayWidth < 480) {
-        circleScale = 0.055;
-        powerupScale = 0.033;
-    } else if (displayWidth < 768) {
-        circleScale = 0.045;
-        powerupScale = 0.027;
-    } else if (displayWidth < 1200) {
-        circleScale = 0.04;
-        powerupScale = 0.024;
-    } else {
-        circleScale = 0.035;
-        powerupScale = 0.021;
-    }
-    
-    CIRCLE_RADIUS = Math.max(20, Math.min(70, displayWidth * circleScale));
-    POWERUP_RADIUS = Math.max(8, Math.min(25, displayWidth * powerupScale));
-}
-
-resizeCanvas();
-
 const ctx = canvas.getContext('2d');
+
+// DOM Elements
 const spawnBtn = document.getElementById('spawnBtn');
 const pauseBtn = document.getElementById('pauseBtn');
 const stopBtn = document.getElementById('stopBtn');
 const powerupBtn = document.getElementById('powerupBtn');
 const circleCountEl = document.getElementById('circleCount');
 const scoreBoard = document.getElementById('score-board');
+const testBtn = document.getElementById('testBtn');
 
-window.addEventListener('resize', () => {
-    resizeCanvas();
-});
-
-// Constants
-// const CIRCLE_RADIUS = 60;
-
+// Game Constants
 const SPEED = 3;
 const MAX_CIRCLES = 5;
 const MAX_POWERUPS = 5;
 const COLORS = ['#e94560', '#00d4ff', '#f39c12', '#9b59b6', '#2ecc71', '#e67e22', '#1abc9c'];
 
+// Global Responsive Variables (updated on resize)
+let CIRCLE_RADIUS = 0;
+let POWERUP_RADIUS = 0;
+let IS_MOBILE = false;
+let IS_TABLET = false;
+let IS_DESKTOP = false;
+let BASE_SIZE = 0;
+let DISPLAY_WIDTH = 0;
+
+// Global Font Sizes (for consistency)
+let TITLE_FONT_SIZE = 0;
+let NAME_FONT_SIZE = 0;
+let SCORE_FONT_SIZE = 0;
+let TROPHY_FONT_SIZE = 0;
+let PROMPT_FONT_SIZE = 0;
+let CIRCLE_ID_FONT_SIZE = 0;
+
+// Global Spacing (for consistency)
+let CIRCLE_OFFSET_Y = 0;
+let TITLE_OFFSET_Y = 0;
+let NAME_OFFSET_Y = 0;
+let SCORE_OFFSET_Y = 0;
+let TROPHY_OFFSET_Y = 0;
+let PROMPT_OFFSET_Y = 0;
+
+// Test Mode
+var testMode = false;
+
+// ============================================
+// RESPONSIVE CALCULATION FUNCTION
+// ============================================
+function updateResponsiveVariables() {
+    DISPLAY_WIDTH = canvasContainer.clientWidth;
+    BASE_SIZE = Math.min(canvas.width, canvas.height);
+    
+    // Device detection
+    IS_MOBILE = DISPLAY_WIDTH < 480;
+    IS_TABLET = DISPLAY_WIDTH >= 480 && DISPLAY_WIDTH < 1200;
+    IS_DESKTOP = DISPLAY_WIDTH >= 1200;
+    
+    // Scale factors
+    let circleScale, powerupScale;
+    
+    if (IS_MOBILE) {
+        circleScale = 0.055;
+        powerupScale = 0.033;
+    } else if (IS_TABLET) {
+        circleScale = 0.045;
+        powerupScale = 0.027;
+    } else {
+        circleScale = 0.035;
+        powerupScale = 0.021;
+    }
+    
+    // Update sizes with bounds
+    CIRCLE_RADIUS = Math.max(20, Math.min(70, DISPLAY_WIDTH * circleScale));
+    POWERUP_RADIUS = Math.max(8, Math.min(25, DISPLAY_WIDTH * powerupScale));
+    
+    // Update font sizes based on device
+    TITLE_FONT_SIZE = IS_MOBILE ? BASE_SIZE * 0.12 : IS_TABLET ? BASE_SIZE * 0.1 : BASE_SIZE * 0.08;
+    NAME_FONT_SIZE = IS_MOBILE ? BASE_SIZE * 0.06 : IS_TABLET ? BASE_SIZE * 0.055 : BASE_SIZE * 0.04;
+    SCORE_FONT_SIZE = IS_MOBILE ? BASE_SIZE * 0.05 : IS_TABLET ? BASE_SIZE * 0.045 : BASE_SIZE * 0.035;
+    TROPHY_FONT_SIZE = IS_MOBILE ? BASE_SIZE * 0.15 : IS_TABLET ? BASE_SIZE * 0.13 : BASE_SIZE * 0.11;
+    PROMPT_FONT_SIZE = IS_MOBILE ? BASE_SIZE * 0.035 : IS_TABLET ? BASE_SIZE * 0.03 : BASE_SIZE * 0.025;
+    CIRCLE_ID_FONT_SIZE = IS_MOBILE ? BASE_SIZE * 0.08 : IS_TABLET ? BASE_SIZE * 0.07 : BASE_SIZE * 0.055;
+    
+    // Update spacing based on device
+    CIRCLE_OFFSET_Y = IS_MOBILE ? -BASE_SIZE * 0.15 : IS_TABLET ? -BASE_SIZE * 0.13 : -BASE_SIZE * 0.12;
+    TITLE_OFFSET_Y = IS_MOBILE ? BASE_SIZE * 0.12 : IS_TABLET ? BASE_SIZE * 0.1 : BASE_SIZE * 0.09;
+    NAME_OFFSET_Y = IS_MOBILE ? BASE_SIZE * 0.22 : IS_TABLET ? BASE_SIZE * 0.18 : BASE_SIZE * 0.16;
+    SCORE_OFFSET_Y = IS_MOBILE ? BASE_SIZE * 0.3 : IS_TABLET ? BASE_SIZE * 0.25 : BASE_SIZE * 0.22;
+    TROPHY_OFFSET_Y = IS_MOBILE ? BASE_SIZE * 0.43 : IS_TABLET ? BASE_SIZE * 0.37 : BASE_SIZE * 0.33;
+    PROMPT_OFFSET_Y = IS_MOBILE ? BASE_SIZE * 0.55 : IS_TABLET ? BASE_SIZE * 0.48 : BASE_SIZE * 0.43;
+    
+    console.log(`Device: ${IS_MOBILE ? 'Mobile' : IS_TABLET ? 'Tablet' : 'Desktop'} | Width: ${DISPLAY_WIDTH}px | Circle: ${CIRCLE_RADIUS}px | Powerup: ${POWERUP_RADIUS}px`);
+}
+
+// ============================================
+// CANVAS RESIZE FUNCTION
+// ============================================
+function resizeCanvas() {
+    const displayWidth = canvasContainer.clientWidth;
+    canvas.width = displayWidth;
+    
+    // Responsive height
+    if (displayWidth < 480) {
+        // Mobile - taller canvas
+        canvas.height = displayWidth * 1.5;
+    } else if (displayWidth < 768) {
+        // Tablet - medium height
+        canvas.height = displayWidth * 0.8;
+    } else {
+        // Desktop - landscape
+        canvas.height = displayWidth * 0.6;
+    }
+    
+    // Update all responsive variables
+    updateResponsiveVariables();
+}
+
+// Initialize canvas
+resizeCanvas();
+
+// Listen for window resize
+window.addEventListener('resize', () => {
+    resizeCanvas();
+});
+
+// ============================================
+// CIRCLE CLASS
+// ============================================
 class Circle {
     constructor(x, y, vx, vy, color, id, powerup = null) {
         this.id = id;
@@ -113,7 +193,7 @@ class Circle {
                 ctx.fill();
             });
         }
-        
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
@@ -169,12 +249,11 @@ class Circle {
                 c2.powerup = null;
                 c2.score += 1;
                 game.updateScoreBoard();
-            } 
+            }
             else if (c1.powerup && c2.powerup) {
                 c1.powerup = null;
                 c2.powerup = null;
             }
-
         }
     }
 
@@ -192,6 +271,9 @@ class Circle {
     }
 }
 
+// ============================================
+// POWERUP CLASS
+// ============================================
 class Powerup {
     constructor(x, y) {
         this.x = x;
@@ -201,7 +283,7 @@ class Powerup {
     draw(ctx) {
         const pulseTime = Date.now() / 200;
         const pulseSize = Math.sin(pulseTime) * 5 + 10;
-        
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, POWERUP_RADIUS + pulseSize, 0, Math.PI * 2);
         const gradient = ctx.createRadialGradient(
@@ -224,6 +306,9 @@ class Powerup {
     }
 }
 
+// ============================================
+// GAME CLASS
+// ============================================
 class Game {
     constructor(canvas, ctx) {
         this.canvas = canvas;
@@ -235,33 +320,32 @@ class Game {
         this.animationId = null;
 
         this.powerupTimer = null;
-        this.minSpawnInterval = 4000
+        this.minSpawnInterval = 4000;
         this.maxSpawnInterval = 9000;
 
         this.winner = null;
         this.gameOver = false;
     }
 
-    schedulePowerUpSpawn(){
-        if(this.powerupTimer){
+    schedulePowerUpSpawn() {
+        if (this.powerupTimer) {
             clearTimeout(this.powerupTimer);
         }
 
-        if(this.isPaused || this.powerups.length >= MAX_POWERUPS){
+        if (this.isPaused || this.powerups.length >= MAX_POWERUPS || this.gameOver) {
             return;
         }
 
         const randomInterval = Math.random() * (this.maxSpawnInterval - this.minSpawnInterval) + this.minSpawnInterval;
 
-        this.powerupTimer = setTimeout(() =>{
+        this.powerupTimer = setTimeout(() => {
             this.spawnPowerUp();
             this.schedulePowerUpSpawn();
         }, randomInterval);
-
     }
 
-    stopPowerUpSpawn(){
-        if(this.powerupTimer){
+    stopPowerUpSpawn() {
+        if (this.powerupTimer) {
             clearTimeout(this.powerupTimer);
             this.powerupTimer = null;
         }
@@ -299,19 +383,18 @@ class Game {
         this.updateScoreBoard();
     }
 
-    checkWinner(){
-        if(this.allCircles.length >= 2 && this.circles.length == 1){
+    checkWinner() {
+        if (this.allCircles.length >= 2 && this.circles.length === 1) {
             this.winner = this.circles[0];
             this.gameOver = true;
             this.isPaused = true;
             this.stopPowerUpSpawn();
-            console.log("Winner Circle:     ", this.winner);
-
+            console.log("Winner Circle:", this.winner);
         }
     }
 
     update() {
-        if(this.gameOver) return;
+        if (this.gameOver) return;
 
         this.circles.forEach(circle => {
             circle.update(this.canvas.width, this.canvas.height);
@@ -331,13 +414,11 @@ class Game {
             }
         }
 
-        this.checkWinner()
+        this.checkWinner();
         this.updateUI();
-
-
     }
 
-        drawWinnerSplash() {
+    drawWinnerSplash() {
         // Semi-transparent overlay
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -345,57 +426,62 @@ class Game {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
+        // Use global responsive variables
+        const circleSizeMultiplier = IS_MOBILE ? 1.2 : IS_TABLET ? 1.4 : 1.5;
+        const glowMultiplier = IS_MOBILE ? 1.8 : 2;
+
         // Pulsing effect
         const pulseTime = Date.now() / 300;
         const pulseScale = Math.sin(pulseTime) * 0.1 + 1;
 
-        // Winner circle (large)
+        // Winner circle
         this.ctx.save();
-        this.ctx.translate(centerX, centerY - 80);
+        this.ctx.translate(centerX, centerY + CIRCLE_OFFSET_Y);
         this.ctx.scale(pulseScale, pulseScale);
-        
+
         // Glow effect
-        const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, CIRCLE_RADIUS * 2);
+        const glowRadius = CIRCLE_RADIUS * glowMultiplier;
+        const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
         gradient.addColorStop(0, this.winner.color + 'ff');
         gradient.addColorStop(0.5, this.winner.color + '80');
         gradient.addColorStop(1, this.winner.color + '00');
         this.ctx.fillStyle = gradient;
         this.ctx.beginPath();
-        this.ctx.arc(0, 0, CIRCLE_RADIUS * 2, 0, Math.PI * 2);
+        this.ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
         this.ctx.fill();
 
         // Winner circle
+        const winnerCircleRadius = CIRCLE_RADIUS * circleSizeMultiplier;
         this.ctx.beginPath();
-        this.ctx.arc(0, 0, CIRCLE_RADIUS * 1.5, 0, Math.PI * 2);
+        this.ctx.arc(0, 0, winnerCircleRadius, 0, Math.PI * 2);
         this.ctx.fillStyle = this.winner.color;
         this.ctx.fill();
         this.ctx.strokeStyle = '#fff';
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = IS_MOBILE ? 2 : IS_TABLET ? 3 : 4;
         this.ctx.stroke();
 
         // Circle ID
         this.ctx.fillStyle = '#000';
-        this.ctx.font = 'bold 40px Arial';
+        this.ctx.font = `bold ${CIRCLE_ID_FONT_SIZE}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(this.winner.id, 0, 0);
-        
+
         this.ctx.restore();
 
         // "YOU WON!" text
-        this.ctx.fillStyle = '#FFD700'; // Gold
-        this.ctx.font = 'bold 60px Arial';
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.font = `bold ${TITLE_FONT_SIZE}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        
-        // Text shadow for depth
+
         this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowOffsetX = 3;
-        this.ctx.shadowOffsetY = 3;
-        
-        this.ctx.fillText('YOU WON!', centerX, centerY + 60);
-        
+        this.ctx.shadowBlur = IS_MOBILE ? 5 : 10;
+        this.ctx.shadowOffsetX = IS_MOBILE ? 2 : 3;
+        this.ctx.shadowOffsetY = IS_MOBILE ? 2 : 3;
+
+        this.ctx.fillText('YOU WON!', centerX, centerY + TITLE_OFFSET_Y);
+
         // Reset shadow
         this.ctx.shadowColor = 'transparent';
         this.ctx.shadowBlur = 0;
@@ -404,22 +490,28 @@ class Game {
 
         // Winner info
         this.ctx.fillStyle = '#fff';
-        this.ctx.font = 'bold 30px Arial';
-        this.ctx.fillText(`Circle ${this.winner.id}`, centerX, centerY + 110);
+        this.ctx.font = `bold ${NAME_FONT_SIZE}px Arial`;
+        this.ctx.fillText(`Circle ${this.winner.id}`, centerX, centerY + NAME_OFFSET_Y);
 
         // Score
-        this.ctx.font = '24px Arial';
+        this.ctx.font = `${SCORE_FONT_SIZE}px Arial`;
         this.ctx.fillStyle = '#00d4ff';
-        this.ctx.fillText(`Final Score: ${this.winner.score}`, centerX, centerY + 150);
+        this.ctx.fillText(`Final Score: ${this.winner.score}`, centerX, centerY + SCORE_OFFSET_Y);
 
         // Trophy emoji
-        this.ctx.font = '80px Arial';
-        this.ctx.fillText('🏆', centerX, centerY + 220);
+        this.ctx.font = `${TROPHY_FONT_SIZE}px Arial`;
+        this.ctx.fillText('🏆', centerX, centerY + TROPHY_OFFSET_Y);
 
         // Play again prompt
-        this.ctx.font = '18px Arial';
+        this.ctx.font = `${PROMPT_FONT_SIZE}px Arial`;
         this.ctx.fillStyle = '#aaa';
-        this.ctx.fillText('Click "Reset" to play again', centerX, centerY + 290);
+
+        if (IS_MOBILE && BASE_SIZE < 350) {
+            this.ctx.fillText('Click "Reset"', centerX, centerY + PROMPT_OFFSET_Y - 10);
+            this.ctx.fillText('to play again', centerX, centerY + PROMPT_OFFSET_Y + 10);
+        } else {
+            this.ctx.fillText('Click "Reset" to play again', centerX, centerY + PROMPT_OFFSET_Y);
+        }
     }
 
     draw() {
@@ -427,14 +519,14 @@ class Game {
         this.circles.forEach(circle => circle.draw(this.ctx));
         this.powerups.forEach(powerup => powerup.draw(this.ctx));
 
-        if (this.winner && this.gameOver){
+        if (this.winner && this.gameOver) {
             this.drawWinnerSplash();
         }
     }
 
     updateScoreBoard() {
         scoreBoard.innerHTML = '';
-        
+
         const sortedCircles = [...this.allCircles].sort((a, b) => {
             if (a.isAlive && !b.isAlive) return -1;
             if (!a.isAlive && b.isAlive) return 1;
@@ -443,13 +535,14 @@ class Game {
 
         sortedCircles.forEach(circle => {
             const row = document.createElement('tr');
-            
+
             if (circle.isAlive) {
                 row.innerHTML = `
                     <td>
                         <span class="badge" style="background-color: ${circle.color}">
                             Circle ${circle.id}
                         </span>
+                        ${this.gameOver && this.winner && circle.id === this.winner.id ? '<span class="ms-1">🏆</span>' : ''}
                     </td>
                     <td class="fw-bold">${circle.score}</td>
                 `;
@@ -466,7 +559,7 @@ class Game {
                 `;
                 row.className = 'table-secondary opacity-50';
             }
-            
+
             scoreBoard.appendChild(row);
         });
     }
@@ -480,47 +573,71 @@ class Game {
     }
 
     togglePause() {
+        if (this.gameOver) return;
+
         this.isPaused = !this.isPaused;
         pauseBtn.textContent = this.isPaused ? '▶️ Start' : '⏸️ Pause';
 
         if (!this.isPaused) {
             this.gameLoop();
             this.schedulePowerUpSpawn();
-        }else{
+        } else {
             this.stopPowerUpSpawn();
         }
     }
 
     reset() {
-        location.reload();
         this.stopPowerUpSpawn();
+        location.reload();
     }
 
     updateUI() {
         circleCountEl.textContent = this.circles.length;
-        spawnBtn.disabled = this.circles.length >= MAX_CIRCLES || game.gameOver;
-        powerupBtn.disabled = this.powerups.length >= MAX_POWERUPS || game.gameOver;
+        spawnBtn.disabled = this.circles.length >= MAX_CIRCLES || this.gameOver;
+        
+        if (this.gameOver) {
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = '🏁 Game Over';
+        }
     }
 }
 
-// Initialize game
+// ============================================
+// INITIALIZE GAME
+// ============================================
 const game = new Game(canvas, ctx);
 
-// Event listeners
+// ============================================
+// EVENT LISTENERS
+// ============================================
 spawnBtn.addEventListener('click', () => {
-    if (game.circles < 2){
+    if (game.circles.length < 2) {
         game.spawnCircle();
         game.spawnCircle();
-    }else{
+    } else {
         game.spawnCircle();
     }
-    if(game.isPaused){
+    if (game.isPaused) {
         game.togglePause();
     }
 });
+
+testBtn.addEventListener('click', () => {
+    testMode = !testMode;
+    testBtn.textContent = testMode ? 'TEST MODE: ON' : 'TEST MODE: OFF';
+    if (testMode) {
+        game.winner = new Circle(120, 120, 1, 1, "#FFD700", 'TEST');
+        game.gameOver = true;
+        game.draw();
+    } else {
+        game.gameOver = false;
+        game.winner = null;
+        game.draw();
+    }
+});
+
 pauseBtn.addEventListener('click', () => game.togglePause());
 stopBtn.addEventListener('click', () => game.reset());
-powerupBtn.addEventListener('click', () => game.spawnPowerUp());
 
 // Initial render
 game.draw();
