@@ -1,7 +1,7 @@
 // TODO
 // 1. Adjust radius based on screen sizes --- DONE
-// 2. Random spawn for power ups
-// 3. Winner splash screen - [OPTIONAL]
+// 2. Random spawn for power ups --- DONE
+// 3. Winner splash screen - [OPTIONAL] -- DONE FOR PC SCREEN
 // 4. Adjust arena size for mobile devices
 
 
@@ -237,6 +237,9 @@ class Game {
         this.powerupTimer = null;
         this.minSpawnInterval = 4000
         this.maxSpawnInterval = 9000;
+
+        this.winner = null;
+        this.gameOver = false;
     }
 
     schedulePowerUpSpawn(){
@@ -249,7 +252,6 @@ class Game {
         }
 
         const randomInterval = Math.random() * (this.maxSpawnInterval - this.minSpawnInterval) + this.minSpawnInterval;
-        console.log("Next spawn after", Math.floor(randomInterval), " secs");
 
         this.powerupTimer = setTimeout(() =>{
             this.spawnPowerUp();
@@ -297,7 +299,20 @@ class Game {
         this.updateScoreBoard();
     }
 
+    checkWinner(){
+        if(this.allCircles.length >= 2 && this.circles.length == 1){
+            this.winner = this.circles[0];
+            this.gameOver = true;
+            this.isPaused = true;
+            this.stopPowerUpSpawn();
+            console.log("Winner Circle:     ", this.winner);
+
+        }
+    }
+
     update() {
+        if(this.gameOver) return;
+
         this.circles.forEach(circle => {
             circle.update(this.canvas.width, this.canvas.height);
         });
@@ -316,13 +331,105 @@ class Game {
             }
         }
 
+        this.checkWinner()
         this.updateUI();
+
+
+    }
+
+        drawWinnerSplash() {
+        // Semi-transparent overlay
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+
+        // Pulsing effect
+        const pulseTime = Date.now() / 300;
+        const pulseScale = Math.sin(pulseTime) * 0.1 + 1;
+
+        // Winner circle (large)
+        this.ctx.save();
+        this.ctx.translate(centerX, centerY - 80);
+        this.ctx.scale(pulseScale, pulseScale);
+        
+        // Glow effect
+        const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, CIRCLE_RADIUS * 2);
+        gradient.addColorStop(0, this.winner.color + 'ff');
+        gradient.addColorStop(0.5, this.winner.color + '80');
+        gradient.addColorStop(1, this.winner.color + '00');
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, CIRCLE_RADIUS * 2, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Winner circle
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, CIRCLE_RADIUS * 1.5, 0, Math.PI * 2);
+        this.ctx.fillStyle = this.winner.color;
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#fff';
+        this.ctx.lineWidth = 4;
+        this.ctx.stroke();
+
+        // Circle ID
+        this.ctx.fillStyle = '#000';
+        this.ctx.font = 'bold 40px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(this.winner.id, 0, 0);
+        
+        this.ctx.restore();
+
+        // "YOU WON!" text
+        this.ctx.fillStyle = '#FFD700'; // Gold
+        this.ctx.font = 'bold 60px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        // Text shadow for depth
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowOffsetX = 3;
+        this.ctx.shadowOffsetY = 3;
+        
+        this.ctx.fillText('YOU WON!', centerX, centerY + 60);
+        
+        // Reset shadow
+        this.ctx.shadowColor = 'transparent';
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+
+        // Winner info
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = 'bold 30px Arial';
+        this.ctx.fillText(`Circle ${this.winner.id}`, centerX, centerY + 110);
+
+        // Score
+        this.ctx.font = '24px Arial';
+        this.ctx.fillStyle = '#00d4ff';
+        this.ctx.fillText(`Final Score: ${this.winner.score}`, centerX, centerY + 150);
+
+        // Trophy emoji
+        this.ctx.font = '80px Arial';
+        this.ctx.fillText('🏆', centerX, centerY + 220);
+
+        // Play again prompt
+        this.ctx.font = '18px Arial';
+        this.ctx.fillStyle = '#aaa';
+        this.ctx.fillText('Click "Reset" to play again', centerX, centerY + 290);
     }
 
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.circles.forEach(circle => circle.draw(this.ctx));
         this.powerups.forEach(powerup => powerup.draw(this.ctx));
+
+        if (this.winner && this.gameOver){
+            this.drawWinnerSplash();
+        }
     }
 
     updateScoreBoard() {
@@ -391,8 +498,8 @@ class Game {
 
     updateUI() {
         circleCountEl.textContent = this.circles.length;
-        spawnBtn.disabled = this.circles.length >= MAX_CIRCLES;
-        powerupBtn.disabled = this.powerups.length >= MAX_POWERUPS;
+        spawnBtn.disabled = this.circles.length >= MAX_CIRCLES || game.gameOver;
+        powerupBtn.disabled = this.powerups.length >= MAX_POWERUPS || game.gameOver;
     }
 }
 
@@ -401,7 +508,12 @@ const game = new Game(canvas, ctx);
 
 // Event listeners
 spawnBtn.addEventListener('click', () => {
-    game.spawnCircle();
+    if (game.circles < 2){
+        game.spawnCircle();
+        game.spawnCircle();
+    }else{
+        game.spawnCircle();
+    }
     if(game.isPaused){
         game.togglePause();
     }
