@@ -1,10 +1,38 @@
+// TODO
+// 1. Adjust radius based on screen sizes --- DONE
+// 2. Random spawn for power ups
+// 3. Winner splash screen - [OPTIONAL]
+// 4. Adjust arena size for mobile devices
+
+
 const canvas = document.getElementById('gameCanvas');
 const canvasContainer = canvas.parentElement;
+let CIRCLE_RADIUS = canvasContainer.clientWidth * 0.04;
+let POWERUP_RADIUS = canvasContainer.clientWidth * 0.025;
 
 function resizeCanvas() {
     const displayWidth = canvasContainer.clientWidth;
     canvas.width = displayWidth;
     canvas.height = displayWidth * 0.6;
+    
+    let circleScale, powerupScale;
+    
+    if (displayWidth < 480) {
+        circleScale = 0.055;
+        powerupScale = 0.033;
+    } else if (displayWidth < 768) {
+        circleScale = 0.045;
+        powerupScale = 0.027;
+    } else if (displayWidth < 1200) {
+        circleScale = 0.04;
+        powerupScale = 0.024;
+    } else {
+        circleScale = 0.035;
+        powerupScale = 0.021;
+    }
+    
+    CIRCLE_RADIUS = Math.max(20, Math.min(70, displayWidth * circleScale));
+    POWERUP_RADIUS = Math.max(8, Math.min(25, displayWidth * powerupScale));
 }
 
 resizeCanvas();
@@ -22,8 +50,7 @@ window.addEventListener('resize', () => {
 });
 
 // Constants
-const CIRCLE_RADIUS = 60;
-const POWERUP_RADIUS = 20;
+// const CIRCLE_RADIUS = 60;
 
 const SPEED = 3;
 const MAX_CIRCLES = 5;
@@ -206,6 +233,36 @@ class Game {
         this.powerups = [];
         this.isPaused = true;
         this.animationId = null;
+
+        this.powerupTimer = null;
+        this.minSpawnInterval = 4000
+        this.maxSpawnInterval = 9000;
+    }
+
+    schedulePowerUpSpawn(){
+        if(this.powerupTimer){
+            clearTimeout(this.powerupTimer);
+        }
+
+        if(this.isPaused || this.powerups.length >= MAX_POWERUPS){
+            return;
+        }
+
+        const randomInterval = Math.random() * (this.maxSpawnInterval - this.minSpawnInterval) + this.minSpawnInterval;
+        console.log("Next spawn after", Math.floor(randomInterval), " secs");
+
+        this.powerupTimer = setTimeout(() =>{
+            this.spawnPowerUp();
+            this.schedulePowerUpSpawn();
+        }, randomInterval);
+
+    }
+
+    stopPowerUpSpawn(){
+        if(this.powerupTimer){
+            clearTimeout(this.powerupTimer);
+            this.powerupTimer = null;
+        }
     }
 
     spawnPowerUp() {
@@ -321,11 +378,15 @@ class Game {
 
         if (!this.isPaused) {
             this.gameLoop();
+            this.schedulePowerUpSpawn();
+        }else{
+            this.stopPowerUpSpawn();
         }
     }
 
     reset() {
         location.reload();
+        this.stopPowerUpSpawn();
     }
 
     updateUI() {
